@@ -31,8 +31,12 @@ import {
   fetchPaperTrustData,
   issueUrl,
   normalizeArxivId,
+  normalizeDoi,
+  paperVersionOptions,
   recordYaml,
+  summaryProblem,
 } from "./lib";
+import { SafeMarkdown } from "./SafeMarkdown";
 import type { ArxivPaper, PaperTrustData, PaperTrustRecord } from "./types";
 import "./styles.css";
 
@@ -52,7 +56,6 @@ function useTheme() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    document.documentElement.style.colorScheme = theme;
 
     const themeColor = document.querySelector('meta[name="theme-color"]');
     themeColor?.setAttribute("content", theme === "dark" ? "#111411" : "#f5f6f2");
@@ -83,17 +86,24 @@ function Shell({ children }: { children: React.ReactNode }) {
     <div className="site-shell">
       <header className="nav">
         <Link className="brand" to="/">
-          <span className="brand-mark">PT</span>
+          <img className="brand-logo" src="/brand/logo-mark.svg" alt="" />
           <span>PaperTrust</span>
         </Link>
         <nav className="nav-links">
+          <Link to="/about">About</Link>
           <a href={`https://github.com/${DATA_REPO}`} target="_blank" rel="noreferrer">
-            Ledger
+            Data
           </a>
-          <Link to="/about">Method</Link>
           <a href="https://github.com/papertrust/papertrust" target="_blank" rel="noreferrer">
             Source
           </a>
+        </nav>
+      </header>
+      <main>{children}</main>
+      <footer>
+        <span>Evidence, not verdicts.</span>
+        <span className="footer-actions">
+          <span>Canonical records live in the public Git ledger.</span>
           <button
             className="theme-toggle"
             type="button"
@@ -103,12 +113,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           >
             {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
           </button>
-        </nav>
-      </header>
-      <main>{children}</main>
-      <footer>
-        <span>Evidence, not verdicts.</span>
-        <span>Canonical records live in the public Git ledger.</span>
+        </span>
       </footer>
     </div>
   );
@@ -180,7 +185,7 @@ function Home() {
         <article>
           <span className="number">02</span>
           <h2>Independent evidence</h2>
-          <p>Reproduction artifacts stay in persistent third-party repositories and are referenced by DOI.</p>
+          <p>A persistent DOI is encouraged when independently archived evidence is available.</p>
         </article>
         <article>
           <span className="number">03</span>
@@ -207,7 +212,7 @@ function RecordCard({ record }: { record: PaperTrustRecord }) {
         </div>
         <ResultPill result={record.result} />
       </div>
-      <p>{record.summary}</p>
+      <SafeMarkdown>{record.summary}</SafeMarkdown>
       {!!record.tags?.length && (
         <div className="tag-list">
           {record.tags.map((tag) => (
@@ -217,13 +222,15 @@ function RecordCard({ record }: { record: PaperTrustRecord }) {
           ))}
         </div>
       )}
-      <div className="evidence">
-        {record.evidence.map((doi) => (
-          <a key={doi} href={`https://doi.org/${doi}`} target="_blank" rel="noreferrer">
-            Evidence · {doi} <ExternalLink size={14} />
-          </a>
-        ))}
-      </div>
+      {!!record.evidence?.length && (
+        <div className="evidence">
+          {record.evidence.map((doi) => (
+            <a key={doi} href={`https://doi.org/${doi}`} target="_blank" rel="noreferrer">
+              Evidence · {doi} <ExternalLink size={14} />
+            </a>
+          ))}
+        </div>
+      )}
     </article>
   );
 }
@@ -346,25 +353,87 @@ function PaperPage() {
   return <PaperPageContent key={id} id={id} />;
 }
 
+function usePaperVersions(arxivId: string) {
+  const normalized = normalizeArxivId(arxivId);
+  const [latestVersion, setLatestVersion] = useState("latest");
+
+  useEffect(() => {
+    if (!normalized) return;
+
+    let active = true;
+    fetchArxivPaper(normalized)
+      .then((paper) => {
+        if (active) setLatestVersion(paper.latestVersion);
+      })
+      .catch(() => {
+        if (active) setLatestVersion("latest");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [normalized]);
+
+  return {
+    latestVersion,
+    options: useMemo(() => paperVersionOptions(latestVersion), [latestVersion]),
+  };
+}
+
+function VersionSelect({
+  arxivId,
+  value,
+  onChange,
+}: {
+  arxivId: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const { latestVersion, options } = usePaperVersions(arxivId);
+
+  useEffect(() => {
+    if (latestVersion !== "latest" && (value === "latest" || !options.includes(value))) {
+      onChange(latestVersion);
+    }
+  }, [latestVersion, onChange, options, value]);
+
+  const rendered = latestVersion === "latest" ? ["latest"] : options;
+  return (
+    <label>
+      <span>Paper version</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)}>
+        {rendered.map((version, index) => (
+          <option key={version} value={version}>
+            {index === 0 && latestVersion !== "latest" ? `${version} (latest)` : version}
+          </option>
+        ))}
+      </select>
+      <small>Defaults to the current arXiv version; canonical records always store an exact version.</small>
+    </label>
+  );
+}
+
 function SubmissionPage() {
   const [search] = useSearchParams();
   const preset = normalizeArxivId(search.get("paper") ?? "") ?? "";
   const [arxivId, setArxivId] = useState(preset);
-  const [paperVersion, setPaperVersion] = useState("v1");
+  const [paperVersion, setPaperVersion] = useState("latest");
   const [result, setResult] = useState<(typeof RESULTS)[number]>("reproduced");
   const [tags, setTags] = useState<string[]>(["independent_reproduction"]);
   const [summary, setSummary] = useState("");
   const [evidence, setEvidence] = useState("");
   const [yamlOpen, setYamlOpen] = useState(false);
 
+  const summaryError = summary ? summaryProblem(summary) : null;
+  const doiValid = !evidence.trim() || normalizeDoi(evidence) !== null;
   const valid = useMemo(
     () =>
       !!normalizeArxivId(arxivId) &&
-      /^v[1-9]\d*$/.test(paperVersion) &&
-      summary.trim().length >= 20 &&
-      /^10\.\d{4,9}\/.+/.test(evidence) &&
+      (paperVersion === "latest" || /^v[1-9]\d*$/.test(paperVersion)) &&
+      !summaryProblem(summary) &&
+      doiValid &&
       tags.length > 0,
-    [arxivId, paperVersion, summary, evidence, tags],
+    [arxivId, paperVersion, summary, doiValid, tags],
   );
 
   const normalized = normalizeArxivId(arxivId) ?? "";
@@ -395,15 +464,7 @@ function SubmissionPage() {
           <span>arXiv ID</span>
           <input value={arxivId} onChange={(event) => setArxivId(event.target.value)} placeholder="2511.15927" />
         </label>
-        <label>
-          <span>Paper version</span>
-          <input
-            value={paperVersion}
-            onChange={(event) => setPaperVersion(event.target.value)}
-            placeholder="v4"
-          />
-          <small>The exact arXiv version your reproduction evaluated.</small>
-        </label>
+        <VersionSelect arxivId={arxivId} value={paperVersion} onChange={setPaperVersion} />
         <label>
           <span>Outcome</span>
           <select
@@ -442,19 +503,32 @@ function SubmissionPage() {
             value={summary}
             onChange={(event) => setSummary(event.target.value)}
             placeholder="Describe what was reproduced, the important setup details, and the observed result."
-            rows={6}
+            rows={7}
           />
-          <small>{summary.trim().length}/2000 · minimum 20 characters</small>
+          <small className={summaryError ? "form-error" : undefined}>
+            {summaryError ?? `${summary.trim().length}/4000 · Markdown supported`}
+          </small>
         </label>
 
+        {summary.trim() && !summaryError && (
+          <div className="markdown-preview">
+            <span className="section-label">Preview</span>
+            <SafeMarkdown>{summary}</SafeMarkdown>
+          </div>
+        )}
+
         <label>
-          <span>Evidence DOI</span>
+          <span>Evidence DOI <em>optional</em></span>
           <input
             value={evidence}
             onChange={(event) => setEvidence(event.target.value)}
             placeholder="10.5281/zenodo.1234567"
           />
-          <small>Use a version-specific DOI for independently hosted artifacts.</small>
+          <small className={!doiValid ? "form-error" : undefined}>
+            {!doiValid
+              ? "Enter a valid DOI or leave this field blank."
+              : "Optional but encouraged when independently archived evidence is available."}
+          </small>
         </label>
 
         <div className="submit-actions">
@@ -484,25 +558,29 @@ function ArtifactSubmissionPage() {
   const [search] = useSearchParams();
   const preset = normalizeArxivId(search.get("paper") ?? "") ?? "";
   const [arxivId, setArxivId] = useState(preset);
+  const [paperVersion, setPaperVersion] = useState("latest");
   const [tags, setTags] = useState<string[]>(["checkpoint_missing"]);
   const [summary, setSummary] = useState("");
   const [evidence, setEvidence] = useState("");
   const [yamlOpen, setYamlOpen] = useState(false);
 
+  const summaryError = summary ? summaryProblem(summary) : null;
+  const doiValid = !evidence.trim() || normalizeDoi(evidence) !== null;
   const valid = useMemo(
     () =>
       !!normalizeArxivId(arxivId) &&
-      summary.trim().length >= 20 &&
-      /^10\.\d{4,9}\/.+/.test(evidence) &&
+      (paperVersion === "latest" || /^v[1-9]\d*$/.test(paperVersion)) &&
+      !summaryProblem(summary) &&
+      doiValid &&
       tags.length > 0,
-    [arxivId, summary, evidence, tags],
+    [arxivId, paperVersion, summary, doiValid, tags],
   );
 
   const normalized = normalizeArxivId(arxivId) ?? "";
   const url = valid
-    ? artifactIssueUrl({ arxivId: normalized, tags, summary, evidence })
+    ? artifactIssueUrl({ arxivId: normalized, paperVersion, tags, summary, evidence })
     : "#";
-  const yaml = artifactRecordYaml({ tags, summary, evidence });
+  const yaml = artifactRecordYaml({ paperVersion, tags, summary, evidence });
 
   function toggleTag(tag: string) {
     setTags((current) =>
@@ -528,6 +606,8 @@ function ArtifactSubmissionPage() {
           <input value={arxivId} onChange={(event) => setArxivId(event.target.value)} placeholder="2511.15927" />
         </label>
 
+        <VersionSelect arxivId={arxivId} value={paperVersion} onChange={setPaperVersion} />
+
         <fieldset>
           <legend>Tags</legend>
           <p>Select the structured artifact findings supported by your archived evidence.</p>
@@ -552,19 +632,32 @@ function ArtifactSubmissionPage() {
             value={summary}
             onChange={(event) => setSummary(event.target.value)}
             placeholder="State what official resources were checked and what public artifacts were or were not found."
-            rows={6}
+            rows={7}
           />
-          <small>{summary.trim().length}/2000 · minimum 20 characters</small>
+          <small className={summaryError ? "form-error" : undefined}>
+            {summaryError ?? `${summary.trim().length}/4000 · Markdown supported`}
+          </small>
         </label>
 
+        {summary.trim() && !summaryError && (
+          <div className="markdown-preview">
+            <span className="section-label">Preview</span>
+            <SafeMarkdown>{summary}</SafeMarkdown>
+          </div>
+        )}
+
         <label>
-          <span>Evidence DOI</span>
+          <span>Evidence DOI <em>optional</em></span>
           <input
             value={evidence}
             onChange={(event) => setEvidence(event.target.value)}
             placeholder="10.5281/zenodo.1234567"
           />
-          <small>Archive the review material independently and use its version-specific DOI.</small>
+          <small className={!doiValid ? "form-error" : undefined}>
+            {!doiValid
+              ? "Enter a valid DOI or leave this field blank."
+              : "Optional but encouraged when independently archived evidence is available."}
+          </small>
         </label>
 
         <div className="submit-actions">
@@ -605,9 +698,8 @@ function About() {
       </p>
       <h2>What is stored?</h2>
       <p>
-        Only PaperTrust-specific records: record type, the exact paper version for reproduction records, structured
-        result, tags, a human-readable summary, and persistent evidence references. arXiv metadata is resolved on
-        demand.
+        Only PaperTrust-specific records: record type, the exact paper version, structured result and tags, a Markdown
+        summary, and optional persistent evidence references. arXiv metadata is resolved on demand.
       </p>
     </section>
   );

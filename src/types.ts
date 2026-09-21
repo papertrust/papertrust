@@ -17,7 +17,7 @@ export interface PaperTrustRecord {
   result?: string;
   tags?: string[];
   summary: string;
-  evidence: string[];
+  evidence?: string[];
 }
 
 export interface PaperTrustData {
@@ -30,6 +30,7 @@ export interface ArxivAuthor {
 
 export interface ArxivPaper {
   id: string;
+  latestVersion: string;
   title: string;
   summary: string;
   authors: ArxivAuthor[];

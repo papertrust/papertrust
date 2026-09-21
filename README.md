@@ -1,5 +1,8 @@
 # PaperTrust
 
+<img src="public/brand/logo-mark.svg" width="84" alt="PaperTrust logo">
+
+
 PaperTrust is a Git-native public reproducibility ledger for computer-science papers.
 
 The website is deliberately thin:

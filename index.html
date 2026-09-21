@@ -3,20 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="PaperTrust — an open, evidence-backed reproducibility ledger for computer-science papers." />
     <meta name="theme-color" content="#f5f6f2" />
-    <script>
-      (() => {
-        const stored = localStorage.getItem("papertrust-theme");
-        const theme = stored === "light" || stored === "dark"
-          ? stored
-          : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-        document.documentElement.dataset.theme = theme;
-        document.documentElement.style.colorScheme = theme;
-        document.querySelector('meta[name="theme-color"]').content = theme === "dark" ? "#111411" : "#f5f6f2";
-      })();
-    </script>
+    <meta property="og:title" content="PaperTrust" />
+    <meta property="og:description" content="Open, evidence-backed reproducibility records for computer-science papers." />
+    <meta property="og:image" content="/brand/logo-512.png" />
+    <script src="/theme-init.js"></script>
     <title>PaperTrust</title>
   </head>
   <body>
