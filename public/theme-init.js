@@ -8,5 +8,5 @@
         : "light";
   document.documentElement.dataset.theme = theme;
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = theme === "dark" ? "#111411" : "#f5f6f2";
+  if (meta) meta.content = theme === "dark" ? "#111b17" : "#f8f7f3";
 })();

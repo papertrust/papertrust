@@ -6,11 +6,16 @@ import {
   Route,
   Routes,
   useNavigate,
+  useLocation,
   useParams,
   useSearchParams,
 } from "react-router-dom";
 import {
   ArrowRight,
+  ArrowUpRight,
+  BookOpen,
+  GitPullRequest,
+  Fingerprint,
   Check,
   ChevronRight,
   CircleAlert,
@@ -58,7 +63,7 @@ function useTheme() {
     document.documentElement.dataset.theme = theme;
 
     const themeColor = document.querySelector('meta[name="theme-color"]');
-    themeColor?.setAttribute("content", theme === "dark" ? "#111411" : "#f5f6f2");
+    themeColor?.setAttribute("content", theme === "dark" ? "#111b17" : "#f8f7f3");
   }, [theme]);
 
   useEffect(() => {
@@ -81,29 +86,35 @@ function useTheme() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   const { theme, toggleTheme } = useTheme();
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
 
   return (
     <div className="site-shell">
+      <a className="skip-link" href="#main-content">Skip to content</a>
       <header className="nav">
         <Link className="brand" to="/">
           <img className="brand-logo" src="/brand/logo-mark.svg" alt="" />
           <span>PaperTrust</span>
         </Link>
-        <nav className="nav-links">
-          <Link to="/about">About</Link>
+        <nav className="nav-links" aria-label="Main navigation">
+          <Link to="/about" aria-current={pathname === "/about" ? "page" : undefined}>About</Link>
           <a href={`https://github.com/${DATA_REPO}`} target="_blank" rel="noreferrer">
-            Data
+            Data <ArrowUpRight size={13} />
           </a>
           <a href="https://github.com/papertrust/papertrust" target="_blank" rel="noreferrer">
-            Source
+            Source <ArrowUpRight size={13} />
           </a>
         </nav>
       </header>
-      <main>{children}</main>
+      <main id="main-content" tabIndex={-1}>{children}</main>
       <footer>
-        <span>Evidence, not verdicts.</span>
+        <Link className="footer-brand" to="/"><img src="/brand/logo-mark.svg" alt="" />PaperTrust<span>Evidence, not verdicts.</span></Link>
         <span className="footer-actions">
-          <span>Canonical records live in the public Git ledger.</span>
+          <span>Open records. Lasting evidence.</span>
           <button
             className="theme-toggle"
             type="button"
@@ -135,65 +146,76 @@ function SearchBox({ initial = "" }: { initial?: string }) {
   }
 
   return (
-    <form className="search-wrap" onSubmit={submit}>
+    <form className="search-wrap" onSubmit={submit} role="search">
+      <label className="search-label" htmlFor="paper-search">Find a paper. Explore the evidence.</label>
       <div className="search-box">
         <Search size={20} />
         <input
+          id="paper-search"
+          aria-invalid={!!error}
+          aria-describedby={error ? "search-error" : "search-hint"}
+          autoComplete="off"
+          spellCheck={false}
           value={value}
           onChange={(event) => {
             setValue(event.target.value);
             setError("");
           }}
-          placeholder="arXiv ID or URL"
+          placeholder="Paste an arXiv ID or URL"
           aria-label="Search by arXiv ID"
         />
         <button type="submit">
           Open paper <ArrowRight size={18} />
         </button>
       </div>
-      {error && <p className="form-error">{error}</p>}
+      {error && <p id="search-error" className="form-error" role="alert">{error}</p>}
+      <p className="search-hint" id="search-hint">Accepts arXiv identifiers and links · e.g. 1706.03762</p>
     </form>
   );
 }
 
 function Home() {
   return (
-    <>
+    <div className="home">
       <section className="hero">
-        <div className="eyebrow">Open reproducibility ledger for computer science</div>
-        <h1>
-          Scientific claims deserve
-          <span> inspectable evidence.</span>
-        </h1>
-        <p className="hero-copy">
-          PaperTrust records reviewed reproductions and artifact findings without trying to decide whether a
-          paper is “true.” Every accepted record is evidence-backed and preserved in a public Git history.
-        </p>
-        <SearchBox />
-        <div className="hero-note">
-          <ShieldCheck size={18} />
-          Papers are indexed lazily. If an arXiv paper has never been discussed, PaperTrust stores nothing about it.
+        <div className="hero-content">
+          <div className="eyebrow"><span className="status-dot" />An open ledger for computer science</div>
+          <h1>Scientific claims.<br /><span>Inspectable evidence.</span></h1>
+          <p className="hero-copy">
+            A shared record of what holds up, what falls short, and what remains
+            to be reproduced. Built around evidence. Open to everyone.
+          </p>
+          <SearchBox />
+          <div className="hero-links">
+            <Link to="/about">How PaperTrust works <ArrowRight size={15} /></Link>
+            <span><ShieldCheck size={15} /> Publicly reviewed records</span>
+          </div>
         </div>
+        <figure className="ledger-figure">
+          <div className="figure-heading"><span>THE EVIDENCE LEDGER</span><span>FIG. 01</span></div>
+          <div className="ledger-sheet">
+            <div className="sheet-heading"><BookOpen size={20} /><span>One paper.<br /><strong>A traceable record.</strong></span><span className="sheet-index">[ P ]</span></div>
+            <div className="ledger-entry"><span className="entry-index">01</span><div><h3>Reproduction</h3><p>Methods, conditions &amp; observed results</p></div><FileCheck2 size={18} /></div>
+            <div className="ledger-entry"><span className="entry-index">02</span><div><h3>Artifact review</h3><p>Code, data &amp; model availability</p></div><Search size={18} /></div>
+            <div className="ledger-entry"><span className="entry-index">03</span><div><h3>Persistent evidence</h3><p>Independent, citable references</p></div><Fingerprint size={18} /></div>
+            <div className="sheet-foot"><GitPullRequest size={15} /><span>Reviewed in public. Preserved in Git.</span></div>
+          </div>
+          <figcaption><span className="figure-rule" />Evidence, not verdicts.<br />A record to inspect, never a score to trust.</figcaption>
+        </figure>
       </section>
 
-      <section className="principles">
-        <article>
-          <span className="number">01</span>
-          <h2>Paper-level records</h2>
-          <p>No claim graph. A record says what was attempted, what happened, and where the evidence lives.</p>
-        </article>
-        <article>
-          <span className="number">02</span>
-          <h2>Independent evidence</h2>
-          <p>A persistent DOI is encouraged when independently archived evidence is available.</p>
-        </article>
-        <article>
-          <span className="number">03</span>
-          <h2>Public review trail</h2>
-          <p>Issues carry submissions and discussion. Merged pull requests define the canonical ledger.</p>
-        </article>
+      <section className="principles" aria-labelledby="principles-title">
+        <div className="principles-intro"><span className="eyebrow">THE PRINCIPLES</span><h2 id="principles-title">Clarity at every step.</h2><p>From an independent attempt<br />to a shared scientific record.</p></div>
+        <article><span className="number">01 / DOCUMENT</span><h3>Specific by design.</h3><p>What was attempted, which version was used, and what actually happened. Every record starts with the details.</p></article>
+        <article><span className="number">02 / SUBSTANTIATE</span><h3>Evidence comes first.</h3><p>Connect findings to inspectable sources. Persistent DOIs are encouraged for independently archived evidence.</p></article>
+        <article><span className="number">03 / REVIEW</span><h3>Open to scrutiny.</h3><p>Submissions are discussed in public. Only reviewed, merged changes enter the canonical ledger.</p></article>
       </section>
-    </>
+
+      <section className="contribute">
+        <div><span className="eyebrow">SCIENCE IS A COLLECTIVE EFFORT</span><h2>Make your findings part of the record.</h2><p>Reproduced a result? Checked the artifacts? Share what you found.</p></div>
+        <div className="contribute-actions"><Link className="button" to="/submit/reproduction">Submit a reproduction <ArrowUpRight size={17} /></Link><Link className="text-link" to="/submit/artifact-review">Review artifacts <ArrowRight size={16} /></Link></div>
+      </section>
+    </div>
   );
 }
 
@@ -274,13 +296,14 @@ function PaperPageContent({ id }: { id: string }) {
   if (!paper || data === undefined) {
     return (
       <section className="page narrow">
-        <div className="loading">Resolving arXiv metadata and PaperTrust records…</div>
+        <div className="loading" role="status"><span className="loading-mark" /><h2>Opening the record</h2><p>Resolving arXiv metadata and PaperTrust records…</p></div>
       </section>
     );
   }
 
   return (
     <section className="page paper-page">
+      <Link className="back-link" to="/">← Find another paper</Link>
       <div className="paper-kicker">
         <span>arXiv:{id}</span>
         {paper.categories.slice(0, 3).map((category) => (
@@ -450,6 +473,7 @@ function SubmissionPage() {
 
   return (
     <section className="page submit-page">
+      <Link className="back-link" to={preset ? `/paper/${preset}` : "/"}>{preset ? "← Back to paper" : "← Back to the ledger"}</Link>
       <div className="submit-heading">
         <div className="eyebrow">Community submission</div>
         <h1>Submit a reproduction</h1>
@@ -487,6 +511,7 @@ function SubmissionPage() {
               <button
                 type="button"
                 className={tags.includes(tag) ? "tag-choice active" : "tag-choice"}
+                aria-pressed={tags.includes(tag)}
                 onClick={() => toggleTag(tag)}
                 key={tag}
               >
@@ -542,7 +567,7 @@ function SubmissionPage() {
           >
             Review and submit on GitHub
           </a>
-          <button className="button ghost wide" type="button" onClick={() => setYamlOpen((value) => !value)}>
+          <button className="button ghost wide" type="button" aria-expanded={yamlOpen} onClick={() => setYamlOpen((value) => !value)}>
             {yamlOpen ? "Hide" : "Preview"} canonical record
           </button>
         </div>
@@ -590,6 +615,7 @@ function ArtifactSubmissionPage() {
 
   return (
     <section className="page submit-page">
+      <Link className="back-link" to={preset ? `/paper/${preset}` : "/"}>{preset ? "← Back to paper" : "← Back to the ledger"}</Link>
       <div className="submit-heading">
         <div className="eyebrow">Community submission</div>
         <h1>Submit an artifact review</h1>
@@ -616,6 +642,7 @@ function ArtifactSubmissionPage() {
               <button
                 type="button"
                 className={tags.includes(tag) ? "tag-choice active" : "tag-choice"}
+                aria-pressed={tags.includes(tag)}
                 onClick={() => toggleTag(tag)}
                 key={tag}
               >
@@ -671,7 +698,7 @@ function ArtifactSubmissionPage() {
           >
             Review and submit on GitHub
           </a>
-          <button className="button ghost wide" type="button" onClick={() => setYamlOpen((value) => !value)}>
+          <button className="button ghost wide" type="button" aria-expanded={yamlOpen} onClick={() => setYamlOpen((value) => !value)}>
             {yamlOpen ? "Hide" : "Preview"} canonical record
           </button>
         </div>
@@ -685,12 +712,13 @@ function ArtifactSubmissionPage() {
 function About() {
   return (
     <section className="page narrow prose">
-      <div className="eyebrow">Method</div>
+      <div className="eyebrow">The PaperTrust approach</div>
       <h1>Evidence, not verdicts.</h1>
       <p>
         PaperTrust is a public record of reviewed reproduction attempts and artifact findings. It does not assign a
         trust score, decide whether a paper is true, or infer misconduct from missing artifacts.
       </p>
+      <div className="about-rule"><BookOpen size={20} /><span>A shared scientific record, built in the open.</span></div>
       <h2>What is canonical?</h2>
       <p>
         GitHub issues carry submissions and discussion. Pull requests carry reviewed changes. Only data merged into
@@ -715,6 +743,7 @@ export default function App() {
           <Route path="/submit/reproduction" element={<SubmissionPage />} />
           <Route path="/submit/artifact-review" element={<ArtifactSubmissionPage />} />
           <Route path="/about" element={<About />} />
+          <Route path="*" element={<section className="page narrow prose"><div className="eyebrow">404 / Page not found</div><h1>A page yet to be written.</h1><p>This address does not point to a PaperTrust page.</p><Link className="button" to="/">Back to the ledger <ArrowRight size={16} /></Link></section>} />
         </Routes>
       </Shell>
     </BrowserRouter>
