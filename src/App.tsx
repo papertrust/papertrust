@@ -47,6 +47,55 @@ import "./styles.css";
 
 type Theme = "light" | "dark";
 
+const SITE_ORIGIN = "https://papertrust.org";
+const DEFAULT_DESCRIPTION =
+  "PaperTrust — an open, evidence-backed reproducibility ledger for computer-science papers.";
+
+function upsertHeadMeta(attribute: "name" | "property", key: string, content: string) {
+  let element = document.head.querySelector(`meta[${attribute}="${key}"]`) as HTMLMetaElement | null;
+  if (!element) {
+    element = document.createElement("meta");
+    element.setAttribute(attribute, key);
+    document.head.append(element);
+  }
+  element.content = content;
+}
+
+function setDocumentSeo({
+  title,
+  description,
+  canonical,
+  robots = "index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1",
+  ogType = "website",
+}: {
+  title: string;
+  description: string;
+  canonical: string;
+  robots?: string;
+  ogType?: string;
+}) {
+  document.title = title;
+  upsertHeadMeta("name", "description", description);
+  upsertHeadMeta("name", "robots", robots);
+  upsertHeadMeta("property", "og:title", title);
+  upsertHeadMeta("property", "og:description", description);
+  upsertHeadMeta("property", "og:url", canonical);
+  upsertHeadMeta("property", "og:type", ogType);
+  upsertHeadMeta("property", "og:image", `${SITE_ORIGIN}/brand/logo-512.png`);
+  upsertHeadMeta("name", "twitter:card", "summary");
+  upsertHeadMeta("name", "twitter:title", title);
+  upsertHeadMeta("name", "twitter:description", description);
+  upsertHeadMeta("name", "twitter:image", `${SITE_ORIGIN}/brand/logo-512.png`);
+
+  let canonicalLink = document.head.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+  if (!canonicalLink) {
+    canonicalLink = document.createElement("link");
+    canonicalLink.rel = "canonical";
+    document.head.append(canonicalLink);
+  }
+  canonicalLink.href = canonical;
+}
+
 function getSystemTheme(): Theme {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
@@ -90,6 +139,38 @@ function Shell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+
+    if (pathname === "/") {
+      setDocumentSeo({
+        title: "PaperTrust",
+        description: DEFAULT_DESCRIPTION,
+        canonical: `${SITE_ORIGIN}/`,
+      });
+    } else if (pathname === "/about") {
+      setDocumentSeo({
+        title: "About · PaperTrust",
+        description:
+          "How PaperTrust records reviewed reproduction attempts, artifact findings, and persistent evidence without assigning trust scores.",
+        canonical: `${SITE_ORIGIN}/about`,
+      });
+    } else if (pathname.startsWith("/submit/")) {
+      const artifact = pathname === "/submit/artifact-review";
+      setDocumentSeo({
+        title: artifact ? "Review artifacts · PaperTrust" : "Submit a reproduction · PaperTrust",
+        description: artifact
+          ? "Submit an artifact availability review to the PaperTrust public evidence ledger."
+          : "Submit a reproduction result to the PaperTrust public evidence ledger.",
+        canonical: `${SITE_ORIGIN}${pathname}`,
+        robots: "noindex,follow",
+      });
+    } else if (!pathname.startsWith("/paper/")) {
+      setDocumentSeo({
+        title: "Page not found · PaperTrust",
+        description: "This address does not point to a PaperTrust page.",
+        canonical: `${SITE_ORIGIN}${pathname}`,
+        robots: "noindex,follow",
+      });
+    }
   }, [pathname]);
 
   return (
@@ -278,6 +359,33 @@ function PaperPageContent({ id }: { id: string }) {
       active = false;
     };
   }, [id]);
+
+  useEffect(() => {
+    const canonicalPath = id.split("/").map(encodeURIComponent).join("/");
+
+    if (error) {
+      setDocumentSeo({
+        title: `arXiv:${id} · PaperTrust`,
+        description: `PaperTrust evidence page for arXiv:${id}. Paper metadata could not be loaded.`,
+        canonical: `${SITE_ORIGIN}/paper/${canonicalPath}`,
+        robots: "noindex,follow",
+      });
+      return;
+    }
+
+    if (!paper || data === undefined) return;
+    const count = data?.records.length ?? 0;
+    const recordPhrase = count === 1 ? "1 reviewed PaperTrust record" : `${count} reviewed PaperTrust records`;
+    setDocumentSeo({
+      title: `${paper.title} · PaperTrust`,
+      description: `${paper.title} — arXiv:${id}. ${recordPhrase} with reproducibility and artifact evidence.`.slice(0, 300),
+      canonical: `${SITE_ORIGIN}/paper/${canonicalPath}`,
+      robots: count
+        ? "index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1"
+        : "noindex,follow",
+      ogType: "article",
+    });
+  }, [data, error, id, paper]);
 
   if (error) {
     return (

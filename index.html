@@ -6,15 +6,51 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="PaperTrust — an open, evidence-backed reproducibility ledger for computer-science papers." />
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
+    <link rel="canonical" href="https://papertrust.org/" />
     <meta name="theme-color" content="#f8f7f3" />
     <meta property="og:title" content="PaperTrust" />
     <meta property="og:description" content="Open, evidence-backed reproducibility records for computer-science papers." />
-    <meta property="og:image" content="/brand/logo-512.png" />
+    <meta property="og:image" content="https://papertrust.org/brand/logo-512.png" />
+    <meta property="og:url" content="https://papertrust.org/" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="PaperTrust" />
+    <meta name="twitter:description" content="Open, evidence-backed reproducibility records for computer-science papers." />
+    <meta name="twitter:image" content="https://papertrust.org/brand/logo-512.png" />
     <script src="/theme-init.js"></script>
     <title>PaperTrust</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><!--seo-fallback-start-->
+      <div class="site-shell">
+        <header class="nav">
+          <a class="brand" href="/"><img class="brand-logo" src="/brand/logo-mark.svg" alt="" /><span>PaperTrust</span></a>
+          <nav class="nav-links" aria-label="Main navigation">
+            <a href="/about">About</a>
+            <a href="https://github.com/papertrust/papertrust-data">Data</a>
+            <a href="https://github.com/papertrust/papertrust">Source</a>
+          </nav>
+        </header>
+        <main id="main-content">
+          <div class="home">
+            <section class="hero">
+              <div class="hero-content">
+                <div class="eyebrow">An open ledger for computer science</div>
+                <h1>Scientific claims.<br /><span>Inspectable evidence.</span></h1>
+                <p class="hero-copy">A shared record of what holds up, what falls short, and what remains to be reproduced. Built around evidence. Open to everyone.</p>
+                <p><a href="/about">How PaperTrust works</a></p>
+              </div>
+            </section>
+            <section class="principles">
+              <article><h2>Specific by design.</h2><p>What was attempted, which version was used, and what actually happened.</p></article>
+              <article><h2>Evidence comes first.</h2><p>Findings connect to inspectable sources and persistent evidence.</p></article>
+              <article><h2>Open to scrutiny.</h2><p>Only reviewed, merged changes enter the canonical ledger.</p></article>
+            </section>
+          </div>
+        </main>
+      </div>
+    <!--seo-fallback-end--></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
